@@ -139,12 +139,13 @@ export function createScene(canvas) {
       animateTo(c, c.clone().addScaledVector(dir, dist));
     },
 
-    setView(name) {
-      const t = new THREE.Vector3(0, bodyHeight * 0.52, 0);
-      const d = bodyHeight * 2.2;
+    /** Fly to a named view; `at` optionally overrides the target height and distance. */
+    setView(name, at = {}) {
+      const t = new THREE.Vector3(0, at.y ?? bodyHeight * 0.52, 0);
+      const d = at.dist ?? bodyHeight * 2.2;
       const dirs = {
         front: [0, 0.08, 1], back: [0, 0.08, -1],
-        left: [1, 0.08, 0], right: [-1, 0.08, 0],
+        left: [1, 0.08, 0], right: [-1, 0.08, 0], top: [0, 1.4, 1],
         reset: [0.35, 0.12, 1],
       };
       const v = new THREE.Vector3(...(dirs[name] ?? dirs.reset)).normalize().multiplyScalar(d);

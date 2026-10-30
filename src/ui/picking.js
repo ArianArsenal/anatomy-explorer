@@ -19,6 +19,7 @@ export function initPicking(app) {
     ndc.set(((clientX - r.left) / r.width) * 2 - 1, -((clientY - r.top) / r.height) * 2 + 1);
     raycaster.setFromCamera(ndc, camera);
     for (const h of raycaster.intersectObjects(app.pickableBatches(), false)) {
+      if (app.isPointSlicedAway(h.point)) continue;
       const key = h.object.userData.keys[h.batchId];
       if (app.isPickablePart(app.part(key))) return key;
     }

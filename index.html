@@ -53,6 +53,23 @@
             <button data-view="right">Right</button>
             <button data-view="reset">Reset</button>
           </div>
+          <div class="tool">
+            <div class="tool-head">
+              <span>Cross-section</span>
+              <button id="slice-flip" class="tool-mini" title="Keep the other half" hidden>⇄ Flip</button>
+            </div>
+            <div class="seg" id="slice-axis">
+              <button data-axis="" class="active">Off</button>
+              <button data-axis="coronal" title="Front / back cut">Coronal</button>
+              <button data-axis="sagittal" title="Left / right cut">Sagittal</button>
+              <button data-axis="axial" title="Top / bottom cut">Axial</button>
+            </div>
+            <input id="slice-pos" type="range" min="0" max="1000" value="500" aria-label="Cut position" hidden />
+          </div>
+          <div class="tool">
+            <div class="tool-head"><span>Exploded view</span><span id="explode-pct" class="pct">0%</span></div>
+            <input id="explode" type="range" min="0" max="100" value="0" aria-label="Explode" />
+          </div>
         </section>
 
         <footer class="credits">

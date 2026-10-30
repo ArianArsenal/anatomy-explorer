@@ -62,10 +62,28 @@ export function kindColor(kind, seed, target = new THREE.Color()) {
 /** Opacity a tissue has even when its layer is fully visible (cornea is see-through). */
 export const kindAlpha = (kind) => (KINDS[kind] ?? KINDS.organ).alpha ?? 1;
 
+/**
+ * Cross-section plane shared by every tissue material. When slicing is off it is parked far away,
+ * so turning the slicer on and off never recompiles shaders.
+ */
+export const clipPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 1e6);
+const cutShading = { value: 0 };
+
+/** While slicing, the inside of a cut part is drawn in flat tissue colour so the section reads as solid. */
+export const setCutShading = (on) => { cutShading.value = on ? 1 : 0; };
+
+function shadeCutFaces(shader) {
+  shader.uniforms.uCutShading = cutShading;
+  shader.fragmentShader = `uniform float uCutShading;\n${shader.fragmentShader.replace(
+    '#include <opaque_fragment>',
+    'if (uCutShading > 0.5 && !gl_FrontFacing) outgoingLight = diffuseColor.rgb * 0.62;\n#include <opaque_fragment>',
+  )}`;
+}
+
 /** Shared shading for one tissue kind. Colour is white: each instance supplies its own. */
 export function makeMaterial(kind) {
   const k = KINDS[kind] ?? KINDS.organ;
-  return new THREE.MeshPhysicalMaterial({
+  const material = new THREE.MeshPhysicalMaterial({
     color: 0xffffff,
     roughness: k.roughness,
     metalness: 0,
@@ -75,7 +93,11 @@ export function makeMaterial(kind) {
     sheenColor: new THREE.Color(k.sheenColor ?? 0xffffff),
     sheenRoughness: k.sheenRoughness ?? 0.5,
     side: THREE.DoubleSide,
+    clippingPlanes: [clipPlane],
+    clipShadows: true,
   });
+  material.onBeforeCompile = shadeCutFaces;
+  return material;
 }
 
 /** Depth-only material drawn just before a translucent layer so only its nearest surface is shaded. */
@@ -84,4 +106,5 @@ export const depthPrepassMaterial = new THREE.MeshBasicMaterial({
   depthWrite: true,
   transparent: true,
   side: THREE.DoubleSide,
+  clippingPlanes: [clipPlane],
 });

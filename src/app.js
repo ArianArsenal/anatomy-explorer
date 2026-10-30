@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { loadBody, LAYERS } from './body/loadBody.js';
+import { clipPlane, setCutShading } from './body/materials.js';
 
 // Highlights tint a part's instance colour toward these (amount = how far).
 const HIGHLIGHT = {
@@ -11,6 +12,18 @@ const HIGHLIGHT = {
   secondary: { color: new THREE.Color(0xffc53d), amount: 0.8 },
   neutral: { color: new THREE.Color(0xc4b8b4), amount: 0.82 },
 };
+
+/**
+ * Cross-section planes: which coordinate they cut, and which side is kept by default
+ * (+1 keeps larger values). Coronal keeps the back, sagittal the body's left, axial the part below.
+ */
+const SLICE_AXES = { coronal: { dim: 'z', keep: -1 }, sagittal: { dim: 'x', keep: 1 }, axial: { dim: 'y', keep: -1 } };
+
+// How far each part moves in the exploded view, relative to its centre (sideways more than up/down),
+// plus an outward push per layer so outer layers peel away from inner ones.
+const EXPLODE_SPREAD = new THREE.Vector3(1.2, 0.3, 1.2);
+const EXPLODE_LAYER_PUSH = 0.045;
+const LAYER_DEPTH = Object.fromEntries(LAYERS.map((l) => [l.id, l.order - 1]));
 
 /**
  * Central state: current body, per-layer visibility/opacity, selection, hover,
@@ -31,6 +44,8 @@ export function createApp(view) {
     _tinted: new Map(), // key -> highlight currently applied to its instances
     muscleHidden: new Set(), // keys hidden so a deep exercise target can be seen
     _hidden: [], // [batch, instanceId] pairs currently hidden by isolation or an exercise
+    slice: { axis: null, pos: 0.5, flip: false }, // axis: null | 'coronal' | 'sagittal' | 'axial'
+    explode: 0, // 0 = assembled, 1 = fully exploded
     _shadowTimer: 0,
 
     on(evt, fn) { (listeners[evt] ??= []).push(fn); },
@@ -42,8 +57,12 @@ export function createApp(view) {
       app.body = body;
       app._tinted.clear();
       app._hidden = [];
+      app.body.bounds = new THREE.Box3();
+      for (const p of app.body.parts.values()) app.body.bounds.union(p.box);
       view.scene.add(app.body.root);
       view.setBodyHeight(app.body.P.H);
+      app.setSlice({});
+      if (app.explode) app.setExplode(app.explode);
       if (app.selectedKey && !app.body.parts.has(app.selectedKey)) app.selectedKey = null;
       if (app.isolateKey && !app.body.parts.has(app.isolateKey)) app.isolateKey = null;
       app.hoverKey = null;
@@ -104,22 +123,87 @@ export function createApp(view) {
           mat.needsUpdate = true;
         }
         mat.opacity = o;
-        prepass.visible = b.visible && transparent;
+        // The prepass draws the batch geometry unmoved, so it would mask exploded parts.
+        prepass.visible = b.visible && transparent && !app.explode;
       }
-      // Redrawing the shadow map is costly; wait until slider drags settle.
+      app.scheduleShadow();
+      view.invalidate();
+    },
+
+    /** Redrawing the shadow map is costly; wait until slider drags settle. */
+    scheduleShadow() {
       clearTimeout(app._shadowTimer);
       app._shadowTimer = setTimeout(() => {
         view.renderer.shadowMap.needsUpdate = true;
         view.invalidate();
       }, 200);
+    },
+
+    /** Cut the body with a plane: { axis, pos (0–1 across the body), flip (keep the other half) }. */
+    setSlice(patch) {
+      Object.assign(app.slice, patch);
+      const { axis, pos, flip } = app.slice;
+      const a = SLICE_AXES[axis];
+      const on = !!(a && app.body);
+      setCutShading(on);
+      view.renderer.localClippingEnabled = on; // clipping costs a few % of frame time, so only while slicing
+      if (!a || !app.body) {
+        clipPlane.set(new THREE.Vector3(0, 1, 0), 1e6);
+      } else {
+        const { min, max } = app.body.bounds;
+        const at = min[a.dim] + (max[a.dim] - min[a.dim]) * pos;
+        const sign = flip ? -a.keep : a.keep;
+        const normal = new THREE.Vector3();
+        normal[a.dim] = sign;
+        clipPlane.set(normal, -sign * at); // keeps points where sign * (coordinate - at) > 0
+      }
+      app.scheduleShadow();
       view.invalidate();
+      app.emit('slice', app.slice);
+    },
+
+    /** Whether a world-space box lies entirely in the half removed by the slicer. */
+    isSlicedAway(box) {
+      if (!app.slice.axis) return false;
+      const n = clipPlane.normal;
+      const far = new THREE.Vector3(n.x > 0 ? box.max.x : box.min.x, n.y > 0 ? box.max.y : box.min.y, n.z > 0 ? box.max.z : box.min.z);
+      return clipPlane.distanceToPoint(far) < 0;
+    },
+
+    /** Point is in the half removed by the slicer (raycasts ignore clipping, so picking checks this). */
+    isPointSlicedAway: (p) => !!app.slice.axis && clipPlane.distanceToPoint(p) < 0,
+
+    /** Pull every part away from the body's centre line by a fraction f (0–1). */
+    setExplode(f) {
+      app.explode = f;
+      if (!app.body) return;
+      const { H } = app.body.P;
+      const m = new THREE.Matrix4();
+      for (const p of app.body.parts.values()) {
+        if (!p.explodeDir) {
+          const c = p.box.getCenter(new THREE.Vector3());
+          const out = new THREE.Vector3(c.x, 0, c.z);
+          const r = out.length();
+          p.explodeDir = new THREE.Vector3(c.x, c.y - H * 0.5, c.z).multiply(EXPLODE_SPREAD);
+          if (r > 0.01) p.explodeDir.addScaledVector(out, (LAYER_DEPTH[p.layer] * EXPLODE_LAYER_PUSH) / r);
+        }
+        m.makeTranslation(p.explodeDir.x * f, p.explodeDir.y * f, p.explodeDir.z * f);
+        for (const { batch, instanceId } of p.items) batch.setMatrixAt(instanceId, m);
+      }
+      // Culling uses the batch bounds, which must follow the moved instances.
+      for (const b of app.body.batches) {
+        b.computeBoundingBox();
+        b.computeBoundingSphere();
+      }
+      app.applyVisibility();
+      app.emit('explode', f);
     },
 
     /** Whether a part can currently be hovered or clicked. */
     isPickablePart(part) {
       if (!part) return false;
       if (app.isolateKey) return part.key === app.isolateKey;
-      return app.layerOpacity(part.layer) >= 0.15;
+      return app.layerOpacity(part.layer) >= 0.15 && !app.isSlicedAway(app.partBox(part.key));
     },
 
     /** Batches worth raycasting against right now. */
@@ -158,7 +242,10 @@ export function createApp(view) {
 
     /** World-space bounds of a part as currently drawn. */
     partBox(key) {
-      return app.part(key)?.box ?? new THREE.Box3();
+      const p = app.part(key);
+      if (!p) return new THREE.Box3();
+      if (!app.explode || !p.explodeDir) return p.box;
+      return p.box.clone().translate(p.explodeDir.clone().multiplyScalar(app.explode));
     },
 
     focus(key) {
