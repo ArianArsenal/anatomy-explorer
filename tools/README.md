@@ -19,6 +19,14 @@ They are generated from the Z-Anatomy Blender file. Run these steps only to chan
    npm run models -- path/to/raw
    ```
    The `BUDGET` table in `tools/optimize.mjs` sets triangle counts per layer.
+5. Clean up the result (takes a few minutes):
+   ```
+   npm run fix-model
+   ```
+   `tools/fix_model.mjs` removes the pubic hair from the skin layer and turns inside-out pieces right side out.
+   Many parts on the body's left side are mirrored copies that face inward in the source model. Rendering
+   both sides hides that, but the cross-section slicer would draw their outer surface as cut tissue. Running
+   it again changes nothing.
 
 `tools/inspect_blend.py` dumps the .blend's collections, objects and materials. It is useful when changing the
 classification in `export_zanatomy.py`.

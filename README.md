@@ -165,6 +165,7 @@ Then open the URL that Vite prints (usually http://localhost:5173).
 | `npm run build` | Makes a production build in `dist/` |
 | `npm run preview` | Serves the production build locally |
 | `npm run models -- <rawDir>` | Re-optimizes the 3D model from a raw Blender export (see below) |
+| `npm run fix-model` | Removes body hair and fixes inside-out parts in the optimized model |
 | `npm run exercises` | Re-downloads the exercise list from free-exercise-db into `public/data/` |
 
 ## Project structure
@@ -204,6 +205,8 @@ The model files in `public/models/` are generated from the Z-Anatomy Blender fil
 2. **`tools/optimize.mjs`** simplifies and compresses each layer with
    [glTF-Transform](https://gltf-transform.dev/) and [meshoptimizer](https://github.com/zeux/meshoptimizer).
    This takes about 7M triangles and 128 MB down to about 1.8M triangles and 15 MB.
+3. **`tools/fix_model.mjs`** removes the pubic hair and turns inside-out parts right side out (many mirrored
+   left-side parts face inward in the source model, which the cross-section view would show).
 
 Step-by-step instructions are in [`tools/README.md`](tools/README.md).
 

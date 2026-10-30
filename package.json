@@ -8,6 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "models": "node tools/optimize.mjs",
+    "fix-model": "node tools/fix_model.mjs",
     "exercises": "node tools/fetch-exercises.mjs"
   },
   "dependencies": {
