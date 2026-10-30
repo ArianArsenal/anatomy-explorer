@@ -30,6 +30,75 @@ function parseName(raw) {
   return { id: slugify(name), side: m ? (m[2] === 'l' ? 1 : -1) : 0, name };
 }
 
+let insideOutCount = 0;
+
+/**
+ * Groups a mesh's triangles into connected pieces (triangles that share a vertex).
+ * Returns, for each triangle, the id of its piece.
+ */
+function trianglePieces(index, vertexCount) {
+  const parent = new Int32Array(vertexCount).map((_, i) => i);
+  const find = (x) => {
+    while (parent[x] !== x) x = parent[x] = parent[parent[x]];
+    return x;
+  };
+  for (let i = 0; i < index.length; i += 3) {
+    const a = find(index[i]);
+    parent[find(index[i + 1])] = a;
+    parent[find(index[i + 2])] = a;
+  }
+  const piece = new Int32Array(index.length / 3);
+  for (let t = 0; t < piece.length; t++) piece[t] = find(index[t * 3]);
+  return piece;
+}
+
+/**
+ * Turns inside-out pieces of a mesh right side out. Many parts on the body's left side were mirrored
+ * in the source model and face inward (triangles and normals both); some, like the skin, were then
+ * merged with correct right-side halves. Both sides are drawn, so that's invisible, but the slicer
+ * shades back faces as cut tissue. A piece is inside-out when its signed volume, measured from its own
+ * centre, is negative. Returns how many pieces were flipped.
+ */
+function fixInsideOut(pos, nor, index) {
+  const piece = trianglePieces(index, pos.length / 3);
+  const centre = new Map(); // piece -> [sx, sy, sz, n]
+  for (let t = 0; t < piece.length; t++) {
+    const c = centre.get(piece[t]) ?? [0, 0, 0, 0];
+    for (let k = 0; k < 3; k++) {
+      const v = index[t * 3 + k] * 3;
+      c[0] += pos[v];
+      c[1] += pos[v + 1];
+      c[2] += pos[v + 2];
+    }
+    c[3] += 3;
+    centre.set(piece[t], c);
+  }
+  const volume = new Map();
+  for (let t = 0; t < piece.length; t++) {
+    const [sx, sy, sz, n] = centre.get(piece[t]);
+    const cx = sx / n, cy = sy / n, cz = sz / n;
+    const a = index[t * 3] * 3, b = index[t * 3 + 1] * 3, d = index[t * 3 + 2] * 3;
+    const ax = pos[a] - cx, ay = pos[a + 1] - cy, az = pos[a + 2] - cz;
+    const bx = pos[b] - cx, by = pos[b + 1] - cy, bz = pos[b + 2] - cz;
+    const dx = pos[d] - cx, dy = pos[d + 1] - cy, dz = pos[d + 2] - cz;
+    const v = ax * (by * dz - bz * dy) - ay * (bx * dz - bz * dx) + az * (bx * dy - by * dx);
+    volume.set(piece[t], (volume.get(piece[t]) ?? 0) + v);
+  }
+  const flip = new Set([...volume].filter(([, v]) => v < 0).map(([p]) => p));
+  if (!flip.size) return 0;
+  const flipped = new Uint8Array(pos.length / 3);
+  for (let t = 0; t < piece.length; t++) {
+    if (!flip.has(piece[t])) continue;
+    const i = t * 3;
+    [index[i + 1], index[i + 2]] = [index[i + 2], index[i + 1]];
+    for (let k = 0; k < 3; k++) flipped[index[i + k]] = 1;
+  }
+  for (let v = 0; v < flipped.length; v++) {
+    if (flipped[v]) for (let k = 0; k < 3; k++) nor[v * 3 + k] = -nor[v * 3 + k];
+  }
+  return flip.size;
+}
+
 /**
  * Copy of a loaded primitive in plain float32 world space. The GLBs store quantized vertices
  * that rely on their node transform; BatchedMesh needs identical attribute layouts and no transforms.
@@ -54,8 +123,13 @@ function bakeGeometry(mesh) {
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
-  geo.setIndex(src.index ? Array.from(src.index.array) : [...Array(n).keys()]);
+  const index = src.index ? Array.from(src.index.array) : [...Array(n).keys()];
+  geo.setIndex(index);
   geo.applyMatrix4(mesh.matrixWorld);
+  if (sn) {
+    insideOutCount += fixInsideOut(geo.attributes.position.array, geo.attributes.normal.array, index);
+    geo.setIndex(index);
+  }
   if (!sn) geo.computeVertexNormals();
   return geo;
 }
@@ -106,7 +180,9 @@ export async function loadBody(onProgress = () => {}) {
     }
     return entries;
   };
+  insideOutCount = 0;
   const entries = (await Promise.all(LAYERS.map((l) => loadLayer(l.id)))).flat();
+  console.debug(`${insideOutCount} inside-out pieces turned right side out`);
 
   // 2. Stand the body on the floor, centred, about 1.75 m tall whatever the source units.
   const box = new THREE.Box3();
