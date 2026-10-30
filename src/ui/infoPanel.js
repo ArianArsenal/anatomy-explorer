@@ -10,12 +10,10 @@ export function initInfoPanel(app) {
   const sub = document.getElementById('info-sub');
   const desc = document.getElementById('info-desc');
   const isoBtn = document.getElementById('info-isolate');
-  let lastLabel = '';
 
   // Clicking outside quiz mode selects (or clears) a part.
   app.on('pick', (hit) => {
     if (app.quiz?.active) return;
-    lastLabel = hit?.mesh.userData.label ?? '';
     app.select(hit ? hit.key : null);
   });
 
@@ -27,10 +25,9 @@ export function initInfoPanel(app) {
     const s = describe(part.id);
     name.textContent = displayName(part.id, part.side);
     sys.textContent = s?.system ?? LAYER_NAMES[part.layer];
-    sub.textContent = [LAYER_NAMES[part.layer] + ' layer', lastLabel].filter(Boolean).join(' · ');
+    sub.textContent = `${LAYER_NAMES[part.layer]} layer`;
     desc.textContent = s?.description ?? '';
     desc.hidden = !s;
-    lastLabel = '';
     el.hidden = false;
     renderIso();
   });

@@ -51,12 +51,22 @@ function hash(str) {
   return ((h >>> 0) % 1000) / 1000;
 }
 
-export function makeMaterial(kind, seed = '') {
+/** Tissue colour of one part (written into its BatchedMesh instance colour). */
+export function kindColor(kind, seed, target = new THREE.Color()) {
   const k = KINDS[kind] ?? KINDS.organ;
-  const color = new THREE.Color(k.color);
-  if (k.jitter) color.offsetHSL(0, 0, (hash(seed) - 0.5) * 2 * k.jitter);
-  const m = new THREE.MeshPhysicalMaterial({
-    color,
+  target.set(k.color);
+  if (k.jitter) target.offsetHSL(0, 0, (hash(seed) - 0.5) * 2 * k.jitter);
+  return target;
+}
+
+/** Opacity a tissue has even when its layer is fully visible (cornea is see-through). */
+export const kindAlpha = (kind) => (KINDS[kind] ?? KINDS.organ).alpha ?? 1;
+
+/** Shared shading for one tissue kind. Colour is white: each instance supplies its own. */
+export function makeMaterial(kind) {
+  const k = KINDS[kind] ?? KINDS.organ;
+  return new THREE.MeshPhysicalMaterial({
+    color: 0xffffff,
     roughness: k.roughness,
     metalness: 0,
     clearcoat: k.clearcoat ?? 0,
@@ -66,8 +76,6 @@ export function makeMaterial(kind, seed = '') {
     sheenRoughness: k.sheenRoughness ?? 0.5,
     side: THREE.DoubleSide,
   });
-  m.userData.alpha = k.alpha ?? 1;
-  return m;
 }
 
 /** Depth-only material drawn just before a translucent layer so only its nearest surface is shaded. */

@@ -1,9 +1,10 @@
 import * as THREE from 'three';
 import { loadBody, LAYERS } from './body/loadBody.js';
 
+// Highlights tint a part's instance colour toward these (amount = how far).
 const HIGHLIGHT = {
-  selected: new THREE.Color(0x2f8cff),
-  hover: new THREE.Color(0x6a6a6a),
+  selected: { color: new THREE.Color(0x4f9dff), amount: 0.6 },
+  hover: { color: new THREE.Color(0xffffff), amount: 0.3 },
 };
 
 /**
@@ -21,6 +22,9 @@ export function createApp(view) {
     hoverKey: null,
     isolateKey: null,
     flashes: new Map(), // key -> { color, until }
+    _tinted: new Map(), // key -> highlight currently applied to its instances
+    _isoBatches: [], // batches whose instances were hidden for isolation
+    _shadowTimer: 0,
 
     on(evt, fn) { (listeners[evt] ??= []).push(fn); },
     emit(evt, data) { for (const fn of listeners[evt] ?? []) fn(data); },
@@ -29,6 +33,8 @@ export function createApp(view) {
       const body = await loadBody(onProgress);
       if (app.body) app.body.dispose();
       app.body = body;
+      app._tinted.clear();
+      app._isoBatches = [];
       view.scene.add(app.body.root);
       view.setBodyHeight(app.body.P.H);
       if (app.selectedKey && !app.body.parts.has(app.selectedKey)) app.selectedKey = null;
@@ -54,35 +60,61 @@ export function createApp(view) {
       app.emit('layers', app.layers);
     },
 
-    /** Effective opacity a mesh is drawn with (0 = hidden). */
-    effectiveOpacity(mesh) {
-      if (app.isolateKey) return mesh.userData.key === app.isolateKey ? 1 : 0;
-      const L = app.layers[mesh.userData.layer];
+    /** Opacity a layer is drawn with (0 = hidden), taking isolation into account. */
+    layerOpacity(layer) {
+      if (app.isolateKey) return app.part(app.isolateKey)?.layer === layer ? 1 : 0;
+      const L = app.layers[layer];
       return L.visible ? L.opacity : 0;
     },
 
     applyVisibility() {
       if (!app.body) return;
-      for (const part of app.body.parts.values()) {
-        for (const mesh of part.meshes) {
-          const mat = mesh.material;
-          const o = app.effectiveOpacity(mesh) * mat.userData.alpha;
-          const transparent = o < 0.999;
-          mesh.visible = o > 0.01;
-          if (mat.transparent !== transparent) {
-            mat.transparent = transparent;
-            mat.needsUpdate = true;
-          }
-          mat.opacity = o;
-          mesh.userData.prepass.visible = mesh.visible && transparent;
-        }
+      const iso = app.part(app.isolateKey);
+      const isoBatches = new Set(iso?.items.map((it) => it.batch));
+
+      // Instance visibility only changes with isolation: restore what was hidden, then hide again.
+      for (const b of app._isoBatches) {
+        for (let i = 0; i < b.userData.keys.length; i++) b.setVisibleAt(i, true);
       }
-      view.renderer.shadowMap.needsUpdate = true;
+      app._isoBatches = [...isoBatches];
+      for (const b of app._isoBatches) {
+        for (let i = 0; i < b.userData.keys.length; i++) b.setVisibleAt(i, b.userData.keys[i] === iso.key);
+      }
+
+      for (const b of app.body.batches) {
+        const { layer, alpha, prepass } = b.userData;
+        const o = (iso ? (isoBatches.has(b) ? 1 : 0) : app.layerOpacity(layer)) * alpha;
+        const mat = b.material;
+        const transparent = o < 0.999;
+        b.visible = o > 0.01;
+        if (mat.transparent !== transparent) {
+          mat.transparent = transparent;
+          mat.needsUpdate = true;
+        }
+        mat.opacity = o;
+        prepass.visible = b.visible && transparent;
+      }
+      // Redrawing the shadow map is costly; wait until slider drags settle.
+      clearTimeout(app._shadowTimer);
+      app._shadowTimer = setTimeout(() => {
+        view.renderer.shadowMap.needsUpdate = true;
+        view.invalidate();
+      }, 200);
       view.invalidate();
     },
 
-    isPickable(mesh) {
-      return mesh.visible && app.effectiveOpacity(mesh) >= 0.15;
+    /** Whether a part can currently be hovered or clicked. */
+    isPickablePart(part) {
+      if (!part) return false;
+      if (app.isolateKey) return part.key === app.isolateKey;
+      return app.layerOpacity(part.layer) >= 0.15;
+    },
+
+    /** Batches worth raycasting against right now. */
+    pickableBatches() {
+      if (!app.body) return [];
+      if (app.isolateKey) return app.part(app.isolateKey)?.items.map((it) => it.batch) ?? [];
+      return app.body.batches.filter((b) => b.visible && app.layerOpacity(b.userData.layer) >= 0.15);
     },
 
     select(key) {
@@ -115,9 +147,7 @@ export function createApp(view) {
     focus(key) {
       const p = app.part(key);
       if (!p) return;
-      const box = new THREE.Box3();
-      for (const m of p.meshes) box.expandByObject(m);
-      view.focusBox(box);
+      view.focusBox(p.box);
     },
 
     flash(key, color, ms = 1200) {
@@ -129,25 +159,26 @@ export function createApp(view) {
     refreshHighlights() {
       if (!app.body) return;
       const now = performance.now();
-      for (const part of app.body.parts.values()) {
-        const f = app.flashes.get(part.key);
-        let color = null;
-        let intensity = 0;
-        if (f && f.until > now) {
-          color = f.color;
-          intensity = 0.55 + 0.35 * Math.sin(now / 90);
-        } else if (part.key === app.selectedKey) {
-          color = HIGHLIGHT.selected;
-          intensity = 0.9;
-        } else if (part.key === app.hoverKey) {
-          color = HIGHLIGHT.hover;
-          intensity = 0.5;
+      const want = new Map();
+      if (app.hoverKey) want.set(app.hoverKey, HIGHLIGHT.hover);
+      if (app.selectedKey) want.set(app.selectedKey, HIGHLIGHT.selected);
+      for (const [key, f] of app.flashes) {
+        if (f.until > now) want.set(key, { color: f.color, amount: 0.45 + 0.3 * Math.sin(now / 90) });
+      }
+      // Only touch parts whose tint changed; there are thousands of them.
+      const keys = new Set([...app._tinted.keys(), ...want.keys()]);
+      const c = new THREE.Color();
+      for (const key of keys) {
+        const h = want.get(key);
+        const prev = app._tinted.get(key);
+        if (h === prev && !app.flashes.has(key)) continue;
+        for (const { batch, instanceId } of app.part(key)?.items ?? []) {
+          c.copy(batch.userData.baseColors[instanceId]);
+          if (h) c.lerp(h.color, h.amount);
+          batch.setColorAt(instanceId, c);
         }
-        for (const m of part.meshes) {
-          if (color) m.material.emissive.copy(color);
-          else m.material.emissive.setRGB(0, 0, 0);
-          m.material.emissiveIntensity = intensity;
-        }
+        if (h) app._tinted.set(key, h);
+        else app._tinted.delete(key);
       }
       view.invalidate();
     },

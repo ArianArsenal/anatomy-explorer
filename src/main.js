@@ -26,7 +26,18 @@ if (window.innerWidth < 760) root.classList.add('collapsed');
 const loading = document.getElementById('loading');
 app.setAllLayers(PRESETS['All layers']);
 app.loadBody((f) => { loading.textContent = `Loading anatomy model… ${Math.round(f * 100)}%`; })
-  .then(() => {
+  .then(async () => {
+    // Compile every material in both its opaque and translucent variants now, not mid-interaction.
+    const { batches } = app.body;
+    for (const t of [true, false]) {
+      for (const b of batches) {
+        b.visible = true;
+        b.material.transparent = t;
+        b.material.needsUpdate = true;
+      }
+      await view.renderer.compileAsync(view.scene, view.camera);
+    }
+    app.applyVisibility();
     view.setView('reset');
     loading.classList.add('done');
   })

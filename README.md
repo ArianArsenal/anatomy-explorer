@@ -99,7 +99,7 @@ Then open the URL that Vite prints (usually http://localhost:5173).
 │   ├── app.js               Central state: layers, selection, isolation, highlights
 │   ├── scene.js             Renderer, camera, lighting, on-demand render loop
 │   ├── body/
-│   │   ├── loadBody.js      Loads the layer GLBs and registers each named part
+│   │   ├── loadBody.js      Loads the layer GLBs and packs ~2,500 parts into ~40 BatchedMeshes
 │   │   └── materials.js     Tissue materials (bone, muscle, skin, liver, …)
 │   ├── data/structures.js   Curated descriptions and name aliases
 │   └── ui/                  Layers, picking, search, info panel, quiz
@@ -124,7 +124,7 @@ Step-by-step instructions are in [`tools/README.md`](tools/README.md).
 ## Tech stack
 
 - [three.js](https://threejs.org/): WebGL rendering, glTF loading, orbit controls
-- [three-mesh-bvh](https://github.com/gkjohnson/three-mesh-bvh): fast mouse picking across thousands of meshes
+- [three-mesh-bvh](https://github.com/gkjohnson/three-mesh-bvh): fast mouse picking inside the batched meshes
 - [Vite](https://vite.dev/): dev server and bundler
 - [Blender](https://www.blender.org/) + [glTF-Transform](https://gltf-transform.dev/): offline model conversion
 

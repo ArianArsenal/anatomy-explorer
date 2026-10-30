@@ -4,7 +4,11 @@ import { HDRLoader } from 'three/addons/loaders/HDRLoader.js';
 
 export function createScene(canvas) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  // Pixel ratio drops while the camera moves on slow GPUs and returns to full once it stops.
+  const basePixelRatio = Math.min(window.devicePixelRatio, 1.5);
+  const minPixelRatio = basePixelRatio * 0.75;
+  let pixelRatio = basePixelRatio;
+  renderer.setPixelRatio(pixelRatio);
   renderer.toneMapping = THREE.AgXToneMapping;
   renderer.toneMappingExposure = 1.1;
   renderer.shadowMap.enabled = true;
@@ -71,16 +75,36 @@ export function createScene(canvas) {
   };
 
   const frameCallbacks = [];
+  let lastFrame = 0;
+  let frameMs = 16;
+  let lastMotion = 0;
+  const setRatio = (r) => {
+    pixelRatio = r;
+    renderer.setPixelRatio(r);
+    dirty = true;
+  };
   const loop = (now) => {
+    let moving = false;
     if (tween) {
       const u = Math.min(1, (now - tween.t0) / tween.ms);
       const e = u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
       controls.target.lerpVectors(tween.fromT, tween.toT, e);
       camera.position.lerpVectors(tween.fromP, tween.toP, e);
       if (u >= 1) tween = null;
-      dirty = true;
+      moving = true;
     }
-    if (controls.update()) dirty = true;
+    if (controls.update()) moving = true;
+    if (moving) {
+      dirty = true;
+      // Average frame time while moving; trade resolution for smoothness when it runs long.
+      if (now - lastMotion < 100) frameMs += (now - lastFrame - frameMs) * 0.2;
+      lastMotion = now;
+      if (frameMs > 22 && pixelRatio > minPixelRatio) setRatio(Math.max(minPixelRatio, pixelRatio - 0.125));
+    } else if (pixelRatio < basePixelRatio && now - lastMotion > 250) {
+      frameMs = 16;
+      setRatio(basePixelRatio);
+    }
+    lastFrame = now;
     for (const fn of frameCallbacks) fn(now);
     if (dirty) {
       dirty = false;

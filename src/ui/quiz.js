@@ -37,7 +37,7 @@ export function initQuiz(app) {
     // Only parts with a curated description: the model has ~2,500 parts, many very obscure.
     const parts = [...app.body.parts.values()].filter((p) => describe(p.id));
     if (scope.value !== 'visible') return parts.filter((p) => p.layer === scope.value);
-    return parts.filter((p) => p.meshes.some((m) => app.isPickable(m)));
+    return parts.filter((p) => app.isPickablePart(p));
   };
 
   const next = () => {
