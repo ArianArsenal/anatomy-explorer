@@ -94,6 +94,8 @@ export function createScene(canvas) {
   };
 
   const frameCallbacks = [];
+  const idleCallbacks = [];
+  let wasMoving = false;
   let lastFrame = performance.now();
   const loop = (now) => {
     const dt = Math.min(now - lastFrame, 50);
@@ -113,6 +115,8 @@ export function createScene(canvas) {
     }
     if (controls.update()) moving = true;
     if (moving) dirty = true;
+    if (wasMoving && !moving) for (const fn of idleCallbacks) fn();
+    wasMoving = moving;
     for (const fn of frameCallbacks) fn(now);
     if (dirty) {
       dirty = false;
@@ -127,8 +131,20 @@ export function createScene(canvas) {
   return {
     renderer, scene, camera, controls,
     onFrame: (fn) => frameCallbacks.push(fn),
+    /** Called once each time the camera comes to rest. */
+    onCameraIdle: (fn) => idleCallbacks.push(fn),
     invalidate: () => { dirty = true; },
     setBodyHeight: (h) => { bodyHeight = h; },
+
+    /** Jump straight to a camera position and target (no animation). */
+    setCamera(position, target) {
+      tween = null;
+      zoomGoal = null;
+      controls.target.copy(target);
+      camera.position.copy(position);
+      controls.update();
+      dirty = true;
+    },
 
     /** Fly to frame a bounding box, keeping the current viewing direction. */
     focusBox(box) {

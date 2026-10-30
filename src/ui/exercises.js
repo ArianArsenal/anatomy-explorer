@@ -787,6 +787,8 @@ export function initExercises(app) {
     /** Number of exercises whose primary or secondary muscles include a group (null until loaded). */
     countForMuscle: (group) => state.data?.filter((e) => e.primaryMuscles.includes(group) || e.secondaryMuscles.includes(group)).length ?? null,
     ready: ensureData,
+    /** Remove the exercise or workout highlight, if any. */
+    clear: () => state.active && clearHighlight(),
 
     /** What the body currently shows, for share links. */
     shareState() {

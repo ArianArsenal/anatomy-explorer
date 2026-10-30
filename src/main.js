@@ -8,6 +8,7 @@ import { initSearch } from './ui/search.js';
 import { initQuiz } from './ui/quiz.js';
 import { initExercises } from './ui/exercises.js';
 import { initViewTools } from './ui/viewTools.js';
+import { initShare } from './ui/share.js';
 
 const view = createScene(document.getElementById('view'));
 const app = createApp(view);
@@ -19,6 +20,7 @@ initSearch(app);
 initQuiz(app);
 initExercises(app);
 initViewTools(app);
+const share = initShare(app);
 
 for (const b of document.querySelectorAll('[data-view]')) {
   b.addEventListener('click', () => view.setView(b.dataset.view));
@@ -54,6 +56,7 @@ app.loadBody((f) => { loading.textContent = `Loading anatomy model… ${Math.rou
     app.setSlice({});
     app.applyVisibility();
     view.setView('reset');
+    await share.start();
     loading.classList.add('done');
   })
   .catch((err) => {
