@@ -2,8 +2,9 @@
 
 An interactive 3D human anatomy viewer that runs in the browser. It is built on a realistic, scan-derived
 model of the human body: 2,500+ named structures across skin, muscles, arteries, veins, nerves, organs and
-the skeleton. You can peel back layers, search for any structure, read about it, and quiz yourself. A
-library of 870+ gym exercises shows exactly which muscles each movement works.
+the skeleton. You can peel back layers, slice the body open, pull it apart, search for any structure, read
+about it, and quiz yourself. A library of 870+ gym exercises shows exactly which muscles each movement works,
+and a workout builder shows which muscles a whole session trains and which it misses.
 
 ![All layers](docs/screenshots/all-layers.png)
 
@@ -19,13 +20,20 @@ library of 870+ gym exercises shows exactly which muscles each movement works.
 - **2,500+ named parts.** Hover to see a name, and click to select a part. Left and right sides are told apart
   (for example *Left short head of biceps brachii*).
 - **Info panel.** Shows each part's body system and a short description, with **Focus** (fly the camera to it)
-  and **Isolate** (hide everything else).
+  and **Isolate** (hide everything else). For about 80 main muscles it also lists the **action**, plus
+  **origin, insertion and nerve** on demand, and links to the exercises that train that muscle.
 - **Search.** Instant search across all structures, with keyboard navigation.
 - **Exercise library.** 876 exercises with photos, equipment and step-by-step instructions. Search by tag
   ("dumbbell chest", "bar squat") or filter by body part and equipment. Selecting one highlights its primary
-  and secondary muscles on the body.
-- **Quiz mode.** "Find the ___" questions over all visible layers or a single layer, with hints, skips, score
-  and streaks.
+  and secondary muscles on the body. Star favourites, and see recently opened exercises.
+- **Workout builder.** Save workouts with sets per exercise. A heatmap colours every muscle group by how much
+  the workout trains it and lists the groups it misses.
+- **Cross-sections.** Cut the body along the coronal, sagittal or axial plane and slide the cut through it.
+- **Exploded view.** A slider pulls every part away from the body's centre, with outer layers moving furthest.
+- **Quiz mode.** "Find the ___" questions over all visible layers or a single layer, or "Which muscle does
+  this exercise mainly work?", with hints, skips, score and streaks.
+- **Shareable links.** The address bar always describes the current view (camera, layers, selection, slice,
+  explode, exercise or workout), so copying the link reopens exactly what you see.
 - **Studio rendering.** Physically based tissue materials (wet muscle, glossy cartilage, matte bone), lighting
   from a photographic HDR environment, and soft contact shadows.
 
@@ -56,6 +64,20 @@ library of 870+ gym exercises shows exactly which muscles each movement works.
 | ![Hover tooltip](docs/screenshots/hover.png) | ![Search and info panel](docs/screenshots/search-info.png) |
 | **Isolate a structure** | **Quiz with hint** |
 | ![Isolate](docs/screenshots/isolate.png) | ![Quiz](docs/screenshots/quiz.png) |
+| **Muscle facts: action, origin, insertion, nerve** | **Exercise quiz: "Which muscle does this work?"** |
+| ![Muscle info card](docs/screenshots/muscle-info.png) | ![Exercise quiz](docs/screenshots/exercise-quiz.png) |
+
+### Cross-sections and exploded view
+
+Use **Cross-section** in the sidebar's View section to cut the body, then drag the slider to move the cut and
+**⇄ Flip** to keep the other half. The camera turns to face the cut, and cut tissue is drawn solid.
+**Exploded view** pulls the parts apart; picking, focus and the quiz all follow the moved parts.
+
+| Sagittal (left / right) | Axial (top / bottom) |
+| :---: | :---: |
+| ![Sagittal section](docs/screenshots/slice-sagittal.png) | ![Axial section](docs/screenshots/slice-axial.png) |
+| **Coronal (front / back), muscles and skeleton** | **Exploded view** |
+| ![Coronal section](docs/screenshots/slice-coronal.png) | ![Exploded view](docs/screenshots/exploded.png) |
 
 ## Exercise library
 
@@ -78,6 +100,21 @@ Open the **🏋 Exercises** panel on the right (it starts open on wide screens).
     the covering muscles are hidden while it is selected.
 - **⚙ Settings:** hide the photos, animation, tags, muscle list, instructions or list thumbnails to keep the
   panel uncluttered. Your choices are saved in the browser.
+- **From the body to exercises:** click a muscle, then **Exercises for biceps →** in the info card. The library
+  is filtered to that muscle group, with exercises that mainly target it listed first.
+- **Favourites and recents:** star exercises with ☆ to keep them in the **Favourites** tab. The last 12
+  exercises you opened appear at the top of the library.
+
+### Workouts
+
+Add exercises with **+** (in the list or the detail view), then open the **Workout** tab.
+
+- Change the number of sets, drag rows to reorder them, and keep several named workouts (new, duplicate,
+  delete). Workouts are saved in the browser.
+- **🔥 Show heatmap on the body** colours each muscle group from yellow (light) to deep red (heavy). Groups the
+  workout doesn't train turn blue. A primary muscle counts each set fully, a secondary muscle counts half.
+- Below the list, every trained group is ranked by sets. Click **Not trained** groups to find exercises for
+  them.
 
 Exercise data and photos come from [free-exercise-db](https://github.com/yuhonas/free-exercise-db) (public
 domain). The exercise list ships with the app, and the photos load from GitHub when you view them.
@@ -87,8 +124,10 @@ domain). The exercise list ships with the app, and the photos load from GitHub w
 | ![Exercise list](docs/screenshots/exercises-list.png) | ![Search "dumbbell chest"](docs/screenshots/exercises-search.png) |
 | **Bench press: chest primary, shoulders and triceps secondary** | **Deadlift: covering muscles hidden to show the erector spinae** |
 | ![Bench press](docs/screenshots/exercise-bench-press.png) | ![Deadlift](docs/screenshots/exercise-deadlift.png) |
-| **Customisable detail view** | |
-| ![Exercise settings](docs/screenshots/exercise-settings.png) | |
+| **Customisable detail view** | **Click a muscle to find exercises for it** |
+| ![Exercise settings](docs/screenshots/exercise-settings.png) | ![Muscle to exercises](docs/screenshots/muscle-to-exercises.png) |
+| **Workout heatmap (front)** | **Workout heatmap (back)** |
+| ![Workout heatmap](docs/screenshots/workout-heatmap.png) | ![Workout heatmap, back](docs/screenshots/workout-heatmap-back.png) |
 
 ## Controls
 
@@ -104,6 +143,8 @@ domain). The exercise list ships with the app, and the photos load from GitHub w
 | Show only one layer | Double-click the layer name |
 | Camera presets | **Front**, **Back**, **Left**, **Right**, **Reset** |
 | Exercise library | **🏋 Exercises** button (top right) |
+| Cross-section / explode | **Cross-section** buttons and **Exploded view** slider under View |
+| Share the current view | **🔗 Copy link to this view**, or copy the address bar |
 
 ## Getting started
 
@@ -129,22 +170,25 @@ Then open the URL that Vite prints (usually http://localhost:5173).
 ## Project structure
 
 ```
-├── index.html               App shell (sidebar, quiz bar, info panel)
+├── index.html               App shell (sidebar, quiz bar, info panel, exercise panel)
 ├── public/
 │   ├── models/              One compressed GLB per layer (~15 MB total)
 │   ├── data/exercises.json  876 exercises (free-exercise-db)
 │   └── env/                 Studio HDR environment map
 ├── src/
 │   ├── main.js              Entry point: wires UI modules and loads the model
-│   ├── app.js               Central state: layers, selection, isolation, highlights
+│   ├── app.js               Central state: layers, selection, isolation, highlights, slice, explode
 │   ├── scene.js             Renderer, camera, lighting, on-demand render loop
 │   ├── body/
 │   │   ├── loadBody.js      Loads the layer GLBs and packs ~2,500 parts into ~40 BatchedMeshes
-│   │   └── materials.js     Tissue materials (bone, muscle, skin, liver, …)
+│   │   └── materials.js     Tissue materials (bone, muscle, skin, liver, …) and the slice plane
 │   ├── data/
 │   │   ├── structures.js    Curated descriptions and name aliases
-│   │   └── exerciseMuscles.js  Exercise muscle groups → body regions and model parts
-│   └── ui/                  Layers, picking, search, info panel, quiz, exercise panel
+│   │   ├── muscleInfo.js    Origin, insertion, action and nerve of ~80 main muscles
+│   │   ├── exercises.js     Loads the exercise library (shared by the panel, quiz and links)
+│   │   └── exerciseMuscles.js  Exercise muscle groups ↔ body regions and model parts
+│   └── ui/                  Layers, picking, search, info panel, quiz, exercise panel,
+│                            view tools (slice / explode) and share links
 ├── tools/                   Model conversion pipeline (Blender + gltf-transform)
 └── docs/screenshots/        Images used in this README
 ```
