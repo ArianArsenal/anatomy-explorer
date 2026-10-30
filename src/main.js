@@ -6,6 +6,7 @@ import { initPicking } from './ui/picking.js';
 import { initInfoPanel } from './ui/infoPanel.js';
 import { initSearch } from './ui/search.js';
 import { initQuiz } from './ui/quiz.js';
+import { initExercises } from './ui/exercises.js';
 
 const view = createScene(document.getElementById('view'));
 const app = createApp(view);
@@ -15,6 +16,7 @@ initPicking(app);
 initInfoPanel(app);
 initSearch(app);
 initQuiz(app);
+initExercises(app);
 
 for (const b of document.querySelectorAll('[data-view]')) {
   b.addEventListener('click', () => view.setView(b.dataset.view));

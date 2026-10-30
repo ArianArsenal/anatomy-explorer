@@ -5,6 +5,10 @@ import { loadBody, LAYERS } from './body/loadBody.js';
 const HIGHLIGHT = {
   selected: { color: new THREE.Color(0x4f9dff), amount: 0.6 },
   hover: { color: new THREE.Color(0xffffff), amount: 0.3 },
+  // Muscles worked by the selected exercise; the other muscles turn neutral so these stand out.
+  primary: { color: new THREE.Color(0xff3a12), amount: 0.85 },
+  secondary: { color: new THREE.Color(0xffc53d), amount: 0.8 },
+  neutral: { color: new THREE.Color(0xc4b8b4), amount: 0.82 },
 };
 
 /**
@@ -22,8 +26,10 @@ export function createApp(view) {
     hoverKey: null,
     isolateKey: null,
     flashes: new Map(), // key -> { color, until }
+    exerciseTint: new Map(), // key -> 'primary' | 'secondary' | 'neutral'
     _tinted: new Map(), // key -> highlight currently applied to its instances
-    _isoBatches: [], // batches whose instances were hidden for isolation
+    exerciseHidden: new Set(), // keys hidden so a deep exercise target can be seen
+    _hidden: [], // [batch, instanceId] pairs currently hidden by isolation or an exercise
     _shadowTimer: 0,
 
     on(evt, fn) { (listeners[evt] ??= []).push(fn); },
@@ -34,7 +40,7 @@ export function createApp(view) {
       if (app.body) app.body.dispose();
       app.body = body;
       app._tinted.clear();
-      app._isoBatches = [];
+      app._hidden = [];
       view.scene.add(app.body.root);
       view.setBodyHeight(app.body.P.H);
       if (app.selectedKey && !app.body.parts.has(app.selectedKey)) app.selectedKey = null;
@@ -72,13 +78,18 @@ export function createApp(view) {
       const iso = app.part(app.isolateKey);
       const isoBatches = new Set(iso?.items.map((it) => it.batch));
 
-      // Instance visibility only changes with isolation: restore what was hidden, then hide again.
-      for (const b of app._isoBatches) {
-        for (let i = 0; i < b.userData.keys.length; i++) b.setVisibleAt(i, true);
-      }
-      app._isoBatches = [...isoBatches];
-      for (const b of app._isoBatches) {
-        for (let i = 0; i < b.userData.keys.length; i++) b.setVisibleAt(i, b.userData.keys[i] === iso.key);
+      // Per-instance visibility: isolation hides everything else in the isolated part's batches;
+      // otherwise an exercise may hide muscles covering its target. Restore, then hide again.
+      for (const [b, i] of app._hidden) b.setVisibleAt(i, true);
+      app._hidden = [];
+      const hide = (b, i) => {
+        b.setVisibleAt(i, false);
+        app._hidden.push([b, i]);
+      };
+      if (iso) {
+        for (const b of isoBatches) b.userData.keys.forEach((k, i) => k !== iso.key && hide(b, i));
+      } else {
+        for (const key of app.exerciseHidden) for (const { batch, instanceId } of app.part(key)?.items ?? []) hide(batch, instanceId);
       }
 
       for (const b of app.body.batches) {
@@ -150,6 +161,22 @@ export function createApp(view) {
       view.focusBox(p.box);
     },
 
+    /**
+     * Tint the muscles an exercise works: Map key → 'primary' | 'secondary', or null to clear.
+     * `hidden` lists muscles to hide because they cover a deep target.
+     */
+    setExerciseHighlight(map, hidden = []) {
+      app.exerciseHidden = new Set(map?.size ? hidden : []);
+      app.applyVisibility();
+      app.exerciseTint = new Map();
+      if (map?.size && app.body) {
+        for (const p of app.body.parts.values()) if (p.layer === 'muscles') app.exerciseTint.set(p.key, 'neutral');
+        for (const [k, role] of map) app.exerciseTint.set(k, role);
+      }
+      app.refreshHighlights();
+      app.emit('exercise-highlight', app.exerciseTint);
+    },
+
     flash(key, color, ms = 1200) {
       if (!key) return;
       app.flashes.set(key, { color: new THREE.Color(color), until: performance.now() + ms });
@@ -160,6 +187,7 @@ export function createApp(view) {
       if (!app.body) return;
       const now = performance.now();
       const want = new Map();
+      for (const [key, role] of app.exerciseTint) want.set(key, HIGHLIGHT[role]);
       if (app.hoverKey) want.set(app.hoverKey, HIGHLIGHT.hover);
       if (app.selectedKey) want.set(app.selectedKey, HIGHLIGHT.selected);
       for (const [key, f] of app.flashes) {

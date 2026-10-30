@@ -2,7 +2,8 @@
 
 An interactive 3D human anatomy viewer that runs in the browser. It is built on a realistic, scan-derived
 model of the human body: 2,500+ named structures across skin, muscles, arteries, veins, nerves, organs and
-the skeleton. You can peel back layers, search for any structure, read about it, and quiz yourself.
+the skeleton. You can peel back layers, search for any structure, read about it, and quiz yourself. A
+library of 870+ gym exercises shows exactly which muscles each movement works.
 
 ![All layers](docs/screenshots/all-layers.png)
 
@@ -20,6 +21,9 @@ the skeleton. You can peel back layers, search for any structure, read about it,
 - **Info panel.** Shows each part's body system and a short description, with **Focus** (fly the camera to it)
   and **Isolate** (hide everything else).
 - **Search.** Instant search across all structures, with keyboard navigation.
+- **Exercise library.** 876 exercises with photos, equipment and step-by-step instructions. Search by tag
+  ("dumbbell chest", "bar squat") or filter by body part and equipment. Selecting one highlights its primary
+  and secondary muscles on the body.
 - **Quiz mode.** "Find the ___" questions over all visible layers or a single layer, with hints, skips, score
   and streaks.
 - **Studio rendering.** Physically based tissue materials (wet muscle, glossy cartilage, matte bone), lighting
@@ -53,12 +57,45 @@ the skeleton. You can peel back layers, search for any structure, read about it,
 | **Isolate a structure** | **Quiz with hint** |
 | ![Isolate](docs/screenshots/isolate.png) | ![Quiz](docs/screenshots/quiz.png) |
 
+## Exercise library
+
+Open the **🏋 Exercises** panel on the right (it starts open on wide screens).
+
+- **Search with any mix of tags:** exercise name, equipment (`dumbbell`, `barbell`, `bar`, `cable`,
+  `kettlebell`…), muscle (`chest`, `hamstrings`…), level (`beginner`) or movement (`push`, `pull`).
+  All words must match, and exercises with those words in their name come first.
+- **Filter** by body part (Chest, Back, Shoulders, Arms, Core, Legs, Neck) and by equipment.
+- **Select an exercise** to see:
+  - its start and end photos, which alternate like a short animation;
+  - level and type tags;
+  - its primary and secondary muscles;
+  - numbered instructions.
+- **On the body:**
+  - Primary muscles glow **red-orange**, secondary muscles **yellow**, and the rest turn neutral grey.
+  - The camera turns to the front or back, whichever side the target muscles are on.
+  - Click a muscle chip to zoom to that muscle.
+  - When the target lies under other muscles (for example the erector spinae under the lats in a deadlift),
+    the covering muscles are hidden while it is selected.
+- **⚙ Settings:** hide the photos, animation, tags, muscle list, instructions or list thumbnails to keep the
+  panel uncluttered. Your choices are saved in the browser.
+
+Exercise data and photos come from [free-exercise-db](https://github.com/yuhonas/free-exercise-db) (public
+domain). The exercise list ships with the app, and the photos load from GitHub when you view them.
+
+| Browse by body part | Search by tags |
+| :---: | :---: |
+| ![Exercise list](docs/screenshots/exercises-list.png) | ![Search "dumbbell chest"](docs/screenshots/exercises-search.png) |
+| **Bench press: chest primary, shoulders and triceps secondary** | **Deadlift: covering muscles hidden to show the erector spinae** |
+| ![Bench press](docs/screenshots/exercise-bench-press.png) | ![Deadlift](docs/screenshots/exercise-deadlift.png) |
+| **Customisable detail view** | |
+| ![Exercise settings](docs/screenshots/exercise-settings.png) | |
+
 ## Controls
 
 | Action | How |
 | --- | --- |
 | Rotate | Left-drag |
-| Zoom | Scroll wheel |
+| Zoom | Scroll wheel (eased smoothly) |
 | Pan | Right-drag |
 | Identify a part | Hover over it |
 | Select a part | Click it |
@@ -66,6 +103,7 @@ the skeleton. You can peel back layers, search for any structure, read about it,
 | Leave isolation / clear selection | **Esc** |
 | Show only one layer | Double-click the layer name |
 | Camera presets | **Front**, **Back**, **Left**, **Right**, **Reset** |
+| Exercise library | **🏋 Exercises** button (top right) |
 
 ## Getting started
 
@@ -86,6 +124,7 @@ Then open the URL that Vite prints (usually http://localhost:5173).
 | `npm run build` | Makes a production build in `dist/` |
 | `npm run preview` | Serves the production build locally |
 | `npm run models -- <rawDir>` | Re-optimizes the 3D model from a raw Blender export (see below) |
+| `npm run exercises` | Re-downloads the exercise list from free-exercise-db into `public/data/` |
 
 ## Project structure
 
@@ -93,6 +132,7 @@ Then open the URL that Vite prints (usually http://localhost:5173).
 ├── index.html               App shell (sidebar, quiz bar, info panel)
 ├── public/
 │   ├── models/              One compressed GLB per layer (~15 MB total)
+│   ├── data/exercises.json  876 exercises (free-exercise-db)
 │   └── env/                 Studio HDR environment map
 ├── src/
 │   ├── main.js              Entry point: wires UI modules and loads the model
@@ -101,8 +141,10 @@ Then open the URL that Vite prints (usually http://localhost:5173).
 │   ├── body/
 │   │   ├── loadBody.js      Loads the layer GLBs and packs ~2,500 parts into ~40 BatchedMeshes
 │   │   └── materials.js     Tissue materials (bone, muscle, skin, liver, …)
-│   ├── data/structures.js   Curated descriptions and name aliases
-│   └── ui/                  Layers, picking, search, info panel, quiz
+│   ├── data/
+│   │   ├── structures.js    Curated descriptions and name aliases
+│   │   └── exerciseMuscles.js  Exercise muscle groups → body regions and model parts
+│   └── ui/                  Layers, picking, search, info panel, quiz, exercise panel
 ├── tools/                   Model conversion pipeline (Blender + gltf-transform)
 └── docs/screenshots/        Images used in this README
 ```
@@ -135,6 +177,8 @@ Step-by-step instructions are in [`tools/README.md`](tools/README.md).
   **BodyParts3D**, © The Database Center for Life Science, licensed
   [CC BY-SA 2.1 Japan](https://creativecommons.org/licenses/by-sa/2.1/jp/). The converted model files in this
   repository are shared under the same CC BY-SA 4.0 license.
+- **Exercises:** [free-exercise-db](https://github.com/yuhonas/free-exercise-db) by yuhonas, released into the
+  public domain ([Unlicense](https://unlicense.org/)). This covers the exercise data and photos.
 - **Studio lighting:** [studio_small_09](https://polyhaven.com/a/studio_small_09) from Poly Haven, CC0.
 
 See [`CREDITS.md`](CREDITS.md) for details.

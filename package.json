@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "models": "node tools/optimize.mjs"
+    "models": "node tools/optimize.mjs",
+    "exercises": "node tools/fetch-exercises.mjs"
   },
   "dependencies": {
     "three": "^0.187.0",

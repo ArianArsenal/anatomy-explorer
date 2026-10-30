@@ -6,4 +6,7 @@
   [CC BY-SA 2.1 Japan](https://creativecommons.org/licenses/by-sa/2.1/jp/).
   The files in `public/models/` are converted, simplified versions (see `tools/`). They are shared under the same
   CC BY-SA 4.0 license.
+- **Exercise library**: [free-exercise-db](https://github.com/yuhonas/free-exercise-db) by yuhonas, released into
+  the public domain under the [Unlicense](https://unlicense.org/). `public/data/exercises.json` is a trimmed copy;
+  the photos are loaded from that repository.
 - **Studio lighting**: `public/env/studio_small_09_1k.hdr` from [Poly Haven](https://polyhaven.com/a/studio_small_09), CC0.

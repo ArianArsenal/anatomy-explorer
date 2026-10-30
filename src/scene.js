@@ -4,11 +4,7 @@ import { HDRLoader } from 'three/addons/loaders/HDRLoader.js';
 
 export function createScene(canvas) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-  // Pixel ratio drops while the camera moves on slow GPUs and returns to full once it stops.
-  const basePixelRatio = Math.min(window.devicePixelRatio, 1.5);
-  const minPixelRatio = basePixelRatio * 0.75;
-  let pixelRatio = basePixelRatio;
-  renderer.setPixelRatio(pixelRatio);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
   renderer.toneMapping = THREE.AgXToneMapping;
   renderer.toneMappingExposure = 1.1;
   renderer.shadowMap.enabled = true;
@@ -64,9 +60,32 @@ export function createScene(canvas) {
   new ResizeObserver(resize).observe(canvas);
   resize();
 
+  // Smooth wheel zoom. OrbitControls applies each wheel notch in a single frame, which reads as
+  // stepping, so wheel events are handled here and eased toward a goal distance instead.
+  // Pinch-zoom on touch screens still goes through OrbitControls.
+  let zoomGoal = null;
+  const offset = new THREE.Vector3();
+  canvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    tween = null;
+    const px = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaMode === 2 ? e.deltaY * 400 : e.deltaY;
+    const current = zoomGoal ?? camera.position.distanceTo(controls.target);
+    zoomGoal = THREE.MathUtils.clamp(current * Math.pow(0.95, -px / 50), controls.minDistance, controls.maxDistance);
+  }, { capture: true, passive: false });
+
+  const stepZoom = (dt) => {
+    offset.subVectors(camera.position, controls.target);
+    const d = offset.length();
+    const next = d + (zoomGoal - d) * (1 - Math.exp(-dt * 0.014));
+    camera.position.copy(controls.target).addScaledVector(offset.normalize(), next);
+    if (Math.abs(next - zoomGoal) < zoomGoal * 0.001) zoomGoal = null;
+  };
+
   // Smooth camera moves
   let tween = null;
   const animateTo = (target, position, ms = 700) => {
+    zoomGoal = null;
     tween = {
       t0: performance.now(), ms,
       fromT: controls.target.clone(), toT: target.clone(),
@@ -75,16 +94,15 @@ export function createScene(canvas) {
   };
 
   const frameCallbacks = [];
-  let lastFrame = 0;
-  let frameMs = 16;
-  let lastMotion = 0;
-  const setRatio = (r) => {
-    pixelRatio = r;
-    renderer.setPixelRatio(r);
-    dirty = true;
-  };
+  let lastFrame = performance.now();
   const loop = (now) => {
+    const dt = Math.min(now - lastFrame, 50);
+    lastFrame = now;
     let moving = false;
+    if (zoomGoal !== null) {
+      stepZoom(dt);
+      moving = true;
+    }
     if (tween) {
       const u = Math.min(1, (now - tween.t0) / tween.ms);
       const e = u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
@@ -94,17 +112,7 @@ export function createScene(canvas) {
       moving = true;
     }
     if (controls.update()) moving = true;
-    if (moving) {
-      dirty = true;
-      // Average frame time while moving; trade resolution for smoothness when it runs long.
-      if (now - lastMotion < 100) frameMs += (now - lastFrame - frameMs) * 0.2;
-      lastMotion = now;
-      if (frameMs > 22 && pixelRatio > minPixelRatio) setRatio(Math.max(minPixelRatio, pixelRatio - 0.125));
-    } else if (pixelRatio < basePixelRatio && now - lastMotion > 250) {
-      frameMs = 16;
-      setRatio(basePixelRatio);
-    }
-    lastFrame = now;
+    if (moving) dirty = true;
     for (const fn of frameCallbacks) fn(now);
     if (dirty) {
       dirty = false;

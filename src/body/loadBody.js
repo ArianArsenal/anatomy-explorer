@@ -154,7 +154,8 @@ export async function loadBody(onProgress = () => {}) {
     const batch = new THREE.BatchedMesh(list.length, verts, indices, makeMaterial(kind));
     batch.name = `${layer}/${kind}`;
     batch.renderOrder = order[layer] * 2 + 1;
-    batch.castShadow = true;
+    // Only the outer silhouettes reach the floor shadow; inner layers would just make it costlier.
+    batch.castShadow = layer === 'skin' || layer === 'muscles' || layer === 'skeleton';
     batch.userData = { layer, kind, alpha: kindAlpha(kind), keys: [], baseColors: [] };
 
     for (const e of list) {

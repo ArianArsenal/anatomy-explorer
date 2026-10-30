@@ -58,8 +58,34 @@
         <footer class="credits">
           3D model: <a href="https://github.com/Z-Anatomy/Models-of-human-anatomy" target="_blank" rel="noopener">Z-Anatomy</a>
           (CC BY-SA 4.0), based on <a href="https://dbarchive.biosciencedbc.jp/en/bodyparts3d/" target="_blank" rel="noopener">BodyParts3D</a>
-          © DBCLS (CC BY-SA 2.1 JP). Lighting: Poly Haven (CC0).
+          © DBCLS (CC BY-SA 2.1 JP). Exercises: <a href="https://github.com/yuhonas/free-exercise-db" target="_blank" rel="noopener">free-exercise-db</a>
+          (public domain). Lighting: Poly Haven (CC0).
         </footer>
+      </aside>
+
+      <button id="exercise-toggle" class="pill-btn" title="Exercise library">🏋 Exercises</button>
+      <aside id="exercise-panel" aria-label="Exercise library">
+        <header class="ex-head">
+          <h2>Exercises</h2>
+          <div class="ex-head-actions">
+            <button id="ex-settings-btn" class="icon-btn" title="Display settings" aria-label="Display settings" aria-expanded="false">⚙</button>
+            <button id="ex-close" class="icon-btn" title="Close" aria-label="Close exercise panel">×</button>
+          </div>
+        </header>
+        <div id="ex-settings" class="ex-settings" hidden></div>
+        <div id="ex-active" class="ex-active" hidden></div>
+        <div id="ex-browse" class="ex-browse">
+          <div class="search">
+            <input id="ex-search" type="search" placeholder="Search: dumbbell, chest, squat…" autocomplete="off" />
+          </div>
+          <div class="ex-regions" id="ex-regions"></div>
+          <div class="ex-filter-row">
+            <select id="ex-equipment" aria-label="Equipment"></select>
+            <span id="ex-count" class="ex-count"></span>
+          </div>
+          <ul id="ex-list" class="ex-list"></ul>
+        </div>
+        <div id="ex-detail" class="ex-detail" hidden></div>
       </aside>
 
       <div id="quizbar" hidden>
