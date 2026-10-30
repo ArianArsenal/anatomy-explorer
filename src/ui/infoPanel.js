@@ -1,5 +1,6 @@
 import { describe, displayName } from '../data/structures.js';
 import { LAYERS } from '../body/loadBody.js';
+import { groupsForPart } from '../data/exerciseMuscles.js';
 
 const LAYER_NAMES = Object.fromEntries(LAYERS.map((l) => [l.id, l.name]));
 
@@ -10,6 +11,7 @@ export function initInfoPanel(app) {
   const sub = document.getElementById('info-sub');
   const desc = document.getElementById('info-desc');
   const isoBtn = document.getElementById('info-isolate');
+  const exLinks = document.getElementById('info-exercises');
 
   // Clicking outside quiz mode selects (or clears) a part.
   app.on('pick', (hit) => {
@@ -30,7 +32,28 @@ export function initInfoPanel(app) {
     desc.hidden = !s;
     el.hidden = false;
     renderIso();
+    renderExerciseLinks(part);
   });
+
+  /** "Exercises for biceps (63) →" for muscles that belong to an exercise muscle group. */
+  const renderExerciseLinks = (part) => {
+    const groups = part.layer === 'muscles' && app.body ? groupsForPart(part.key, app.body) : [];
+    exLinks.hidden = !groups.length || !app.exercises;
+    exLinks.innerHTML = '';
+    if (exLinks.hidden) return;
+    const links = groups.map((g) => {
+      const b = document.createElement('button');
+      b.className = 'info-link';
+      b.textContent = `Exercises for ${g} →`;
+      b.addEventListener('click', () => app.exercises.showForMuscle(g));
+      exLinks.append(b);
+      return [g, b];
+    });
+    app.exercises.ready().then(() => {
+      if (app.selectedKey !== part.key) return;
+      for (const [g, b] of links) b.textContent = `Exercises for ${g} (${app.exercises.countForMuscle(g)}) →`;
+    }).catch(() => {});
+  };
 
   const renderIso = () => {
     const on = app.isolateKey && app.isolateKey === app.selectedKey;

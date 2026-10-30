@@ -6,6 +6,7 @@ const HIGHLIGHT = {
   selected: { color: new THREE.Color(0x4f9dff), amount: 0.6 },
   hover: { color: new THREE.Color(0xffffff), amount: 0.3 },
   // Muscles worked by the selected exercise; the other muscles turn neutral so these stand out.
+  // (Workout heatmaps pass their own { color, amount } per muscle.)
   primary: { color: new THREE.Color(0xff3a12), amount: 0.85 },
   secondary: { color: new THREE.Color(0xffc53d), amount: 0.8 },
   neutral: { color: new THREE.Color(0xc4b8b4), amount: 0.82 },
@@ -26,9 +27,9 @@ export function createApp(view) {
     hoverKey: null,
     isolateKey: null,
     flashes: new Map(), // key -> { color, until }
-    exerciseTint: new Map(), // key -> 'primary' | 'secondary' | 'neutral'
+    muscleTint: new Map(), // key -> 'primary' | 'secondary' | 'neutral' | { color, amount }
     _tinted: new Map(), // key -> highlight currently applied to its instances
-    exerciseHidden: new Set(), // keys hidden so a deep exercise target can be seen
+    muscleHidden: new Set(), // keys hidden so a deep exercise target can be seen
     _hidden: [], // [batch, instanceId] pairs currently hidden by isolation or an exercise
     _shadowTimer: 0,
 
@@ -89,7 +90,7 @@ export function createApp(view) {
       if (iso) {
         for (const b of isoBatches) b.userData.keys.forEach((k, i) => k !== iso.key && hide(b, i));
       } else {
-        for (const key of app.exerciseHidden) for (const { batch, instanceId } of app.part(key)?.items ?? []) hide(batch, instanceId);
+        for (const key of app.muscleHidden) for (const { batch, instanceId } of app.part(key)?.items ?? []) hide(batch, instanceId);
       }
 
       for (const b of app.body.batches) {
@@ -155,26 +156,31 @@ export function createApp(view) {
       if (!L.visible || L.opacity < 0.25) app.setLayer(p.layer, { visible: true, opacity: Math.max(L.opacity, 1) });
     },
 
+    /** World-space bounds of a part as currently drawn. */
+    partBox(key) {
+      return app.part(key)?.box ?? new THREE.Box3();
+    },
+
     focus(key) {
-      const p = app.part(key);
-      if (!p) return;
-      view.focusBox(p.box);
+      if (!app.part(key)) return;
+      view.focusBox(app.partBox(key));
     },
 
     /**
-     * Tint the muscles an exercise works: Map key → 'primary' | 'secondary', or null to clear.
+     * Tint muscles for an exercise or workout: Map key → a HIGHLIGHT role name or a { color, amount }
+     * object, or null to clear. Muscles not in the map turn neutral so the tinted ones stand out.
      * `hidden` lists muscles to hide because they cover a deep target.
      */
-    setExerciseHighlight(map, hidden = []) {
-      app.exerciseHidden = new Set(map?.size ? hidden : []);
+    setMuscleTint(map, hidden = []) {
+      app.muscleHidden = new Set(map?.size ? hidden : []);
       app.applyVisibility();
-      app.exerciseTint = new Map();
+      app.muscleTint = new Map();
       if (map?.size && app.body) {
-        for (const p of app.body.parts.values()) if (p.layer === 'muscles') app.exerciseTint.set(p.key, 'neutral');
-        for (const [k, role] of map) app.exerciseTint.set(k, role);
+        for (const p of app.body.parts.values()) if (p.layer === 'muscles') app.muscleTint.set(p.key, 'neutral');
+        for (const [k, tint] of map) app.muscleTint.set(k, tint);
       }
       app.refreshHighlights();
-      app.emit('exercise-highlight', app.exerciseTint);
+      app.emit('muscle-tint', app.muscleTint);
     },
 
     flash(key, color, ms = 1200) {
@@ -187,7 +193,7 @@ export function createApp(view) {
       if (!app.body) return;
       const now = performance.now();
       const want = new Map();
-      for (const [key, role] of app.exerciseTint) want.set(key, HIGHLIGHT[role]);
+      for (const [key, tint] of app.muscleTint) want.set(key, HIGHLIGHT[tint] ?? tint);
       if (app.hoverKey) want.set(app.hoverKey, HIGHLIGHT.hover);
       if (app.selectedKey) want.set(app.selectedKey, HIGHLIGHT.selected);
       for (const [key, f] of app.flashes) {

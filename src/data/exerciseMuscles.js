@@ -61,3 +61,20 @@ export const partsForMuscle = (group, body) => musclesMatching(MUSCLE_GROUPS[gro
 
 /** Muscle-layer parts that hide a deep group from view (none for superficial groups). */
 export const coverForMuscle = (group, body) => musclesMatching(MUSCLE_GROUPS[group]?.cover, body, `cover:${group}`);
+
+const inverse = new WeakMap();
+
+/** Muscle groups a part belongs to, e.g. ['biceps'] for the left biceps brachii. */
+export function groupsForPart(key, body) {
+  if (!inverse.has(body)) {
+    const map = new Map();
+    for (const g of Object.keys(MUSCLE_GROUPS)) {
+      for (const k of partsForMuscle(g, body)) {
+        if (!map.has(k)) map.set(k, []);
+        map.get(k).push(g);
+      }
+    }
+    inverse.set(body, map);
+  }
+  return inverse.get(body).get(key) ?? [];
+}
