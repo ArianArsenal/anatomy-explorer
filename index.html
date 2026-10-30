@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Anatomy Explorer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="view"></canvas>
+
+      <button id="sidebar-toggle" class="icon-btn" aria-label="Toggle panel" title="Toggle panel">☰</button>
+
+      <aside id="sidebar">
+        <header class="brand">
+          <div class="logo">⚕</div>
+          <div>
+            <h1>Anatomy Explorer</h1>
+            <p>Interactive 3D human body</p>
+          </div>
+        </header>
+
+        <section>
+          <h2>Layers</h2>
+          <div class="presets" id="presets"></div>
+          <ul class="layers" id="layer-list"></ul>
+        </section>
+
+        <section>
+          <h2>Search</h2>
+          <div class="search">
+            <input id="search" type="search" placeholder="Find a structure… e.g. femur, aorta" autocomplete="off" />
+          </div>
+          <ul id="search-results" class="results"></ul>
+        </section>
+
+        <section>
+          <h2>Quiz</h2>
+          <div class="quiz-setup">
+            <select id="quiz-scope" aria-label="Quiz scope"></select>
+            <button id="quiz-start" class="primary">Start quiz</button>
+          </div>
+        </section>
+
+        <section>
+          <h2>View</h2>
+          <div class="views">
+            <button data-view="front">Front</button>
+            <button data-view="back">Back</button>
+            <button data-view="left">Left</button>
+            <button data-view="right">Right</button>
+            <button data-view="reset">Reset</button>
+          </div>
+        </section>
+
+        <footer class="credits">
+          3D model: <a href="https://github.com/Z-Anatomy/Models-of-human-anatomy" target="_blank" rel="noopener">Z-Anatomy</a>
+          (CC BY-SA 4.0), based on <a href="https://dbarchive.biosciencedbc.jp/en/bodyparts3d/" target="_blank" rel="noopener">BodyParts3D</a>
+          © DBCLS (CC BY-SA 2.1 JP). Lighting: Poly Haven (CC0).
+        </footer>
+      </aside>
+
+      <div id="quizbar" hidden>
+        <div class="quiz-prompt">Find the <strong id="quiz-target"></strong></div>
+        <div class="quiz-feedback" id="quiz-feedback"></div>
+        <div class="quiz-stats"><span id="quiz-score">0 / 0</span><span id="quiz-streak"></span></div>
+        <div class="quiz-actions">
+          <button id="quiz-hint">Hint</button>
+          <button id="quiz-skip">Skip</button>
+          <button id="quiz-end" class="ghost">End</button>
+        </div>
+      </div>
+
+      <div id="info" hidden>
+        <button class="close" id="info-close" aria-label="Close">×</button>
+        <div class="chip" id="info-system"></div>
+        <h3 id="info-name"></h3>
+        <div class="sub" id="info-sub"></div>
+        <p id="info-desc"></p>
+        <div class="info-actions">
+          <button id="info-focus">Focus</button>
+          <button id="info-isolate">Isolate</button>
+        </div>
+      </div>
+
+      <div id="tooltip" hidden></div>
+      <div id="help">Drag to rotate · Scroll to zoom · Right-drag to pan · Click a part to identify it</div>
+      <div id="loading">Loading anatomy model…</div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
