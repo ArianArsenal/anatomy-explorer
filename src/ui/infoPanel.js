@@ -1,6 +1,7 @@
 import { describe, displayName } from '../data/structures.js';
 import { LAYERS } from '../body/loadBody.js';
 import { groupsForPart } from '../data/exerciseMuscles.js';
+import { muscleInfo } from '../data/muscleInfo.js';
 
 const LAYER_NAMES = Object.fromEntries(LAYERS.map((l) => [l.id, l.name]));
 
@@ -12,6 +13,21 @@ export function initInfoPanel(app) {
   const desc = document.getElementById('info-desc');
   const isoBtn = document.getElementById('info-isolate');
   const exLinks = document.getElementById('info-exercises');
+  const $ = (id) => document.getElementById(id);
+  const muscleEl = $('info-muscle');
+  const moreEl = $('info-more');
+  const moreBtn = $('info-more-btn');
+  let showMore = false; // remembered while the page is open
+
+  const renderMore = () => {
+    moreEl.hidden = !showMore;
+    moreBtn.textContent = showMore ? 'Less ▴' : 'Origin, insertion & nerve ▾';
+    moreBtn.setAttribute('aria-expanded', String(showMore));
+  };
+  moreBtn.addEventListener('click', () => {
+    showMore = !showMore;
+    renderMore();
+  });
 
   // Clicking outside quiz mode selects (or clears) a part.
   app.on('pick', (hit) => {
@@ -30,7 +46,17 @@ export function initInfoPanel(app) {
     sub.textContent = `${LAYER_NAMES[part.layer]} layer`;
     desc.textContent = s?.description ?? '';
     desc.hidden = !s;
+    const m = part.layer === 'muscles' ? muscleInfo(part.id) : null;
+    muscleEl.hidden = !m;
+    if (m) {
+      $('info-action').textContent = m.action;
+      $('info-origin').textContent = m.origin;
+      $('info-insertion').textContent = m.insertion;
+      $('info-nerve').textContent = m.nerve;
+      renderMore();
+    }
     el.hidden = false;
+    el.scrollTop = 0;
     renderIso();
     renderExerciseLinks(part);
   });

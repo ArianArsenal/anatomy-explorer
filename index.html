@@ -93,7 +93,7 @@
       </aside>
 
       <div id="quizbar" hidden>
-        <div class="quiz-prompt">Find the <strong id="quiz-target"></strong></div>
+        <div class="quiz-prompt"><img id="quiz-img" class="quiz-img" alt="" hidden /><span id="quiz-pre">Find the</span> <strong id="quiz-target"></strong><span id="quiz-post"></span></div>
         <div class="quiz-feedback" id="quiz-feedback"></div>
         <div class="quiz-stats"><span id="quiz-score">0 / 0</span><span id="quiz-streak"></span></div>
         <div class="quiz-actions">
@@ -109,6 +109,17 @@
         <h3 id="info-name"></h3>
         <div class="sub" id="info-sub"></div>
         <p id="info-desc"></p>
+        <div id="info-muscle" class="info-muscle" hidden>
+          <dl>
+            <dt>Action</dt><dd id="info-action"></dd>
+          </dl>
+          <dl id="info-more" hidden>
+            <dt>Origin</dt><dd id="info-origin"></dd>
+            <dt>Insertion</dt><dd id="info-insertion"></dd>
+            <dt>Nerve</dt><dd id="info-nerve"></dd>
+          </dl>
+          <button id="info-more-btn" class="info-more-btn" aria-expanded="false">Origin, insertion &amp; nerve ▾</button>
+        </div>
         <div id="info-exercises" class="info-exercises" hidden></div>
         <div class="info-actions">
           <button id="info-focus">Focus</button>
