@@ -6,6 +6,8 @@ the skeleton. You can peel back layers, slice the body open, pull it apart, sear
 about it, and quiz yourself. A library of 870+ gym exercises shows exactly which muscles each movement works,
 and a workout builder shows which muscles a whole session trains and which it misses.
 
+**Live app: https://anatomy-explorer-arian.netlify.app**
+
 ![All layers](docs/screenshots/all-layers.png)
 
 ## Features
@@ -158,6 +160,15 @@ npm run dev
 ```
 
 Then open the URL that Vite prints (usually http://localhost:5173).
+
+### Deploying
+
+The live site is hosted on Netlify (`netlify.toml`). After logging in once with `npx netlify-cli login`:
+
+```bash
+npm run build
+npx netlify-cli deploy --prod --dir dist --no-build
+```
 
 | Script | What it does |
 | --- | --- |
